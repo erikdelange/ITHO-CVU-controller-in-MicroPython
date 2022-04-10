@@ -31,8 +31,10 @@ try:
             raise TypeError("expected list with length of 2")
 
     tasks = temp
-except (OSError, ValueError, KeyError, TypeError) as e:
+except (ValueError, KeyError, TypeError) as e:
     sys.print_exception(e)
+except OSError as e:
+    print(e, "- file tasks.json not found")
 
 remote = ITHOREMOTE()
 
