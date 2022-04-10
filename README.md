@@ -91,4 +91,5 @@ Also copy [ahttpserver](https://github.com/erikdelange/MicroPython-HTTP-Server),
 ### Additional information
 
 [CC1101 Datasheet](https://www.ti.com/lit/ds/symlink/cc1101.pdf)
+
 [DN503 - SPI Access (for the CC1101)](https://www.ti.com/lit/an/swra112b/swra112b.pdf)
