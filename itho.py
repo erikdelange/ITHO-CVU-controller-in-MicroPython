@@ -95,10 +95,10 @@ class ITHOCOMMAND:
 
 class ITHOPACKET:
     def __init__(self):
-        self.command = ITHOCOMMAND.UNKNOWN  # for incoming message only
-        self.device_type = 0  # for incoming message only
-        self.device_id = bytearray(3)  # for incoming message only
-        self.counter = 0  # for incoming message only
+        self.command = ITHOCOMMAND.UNKNOWN  # used for incoming message only
+        self.device_type = 0  # used for incoming message only
+        self.device_id = bytearray(3)  # used for incoming message only
+        self.counter = 0  # used for incoming message only
 
         self.data_decoded = bytearray(32)
         self.data_decoded_chk = bytearray(32)
@@ -286,33 +286,24 @@ class ITHO:
         self.rf.write_register(CC1101.FREQ0, 0x6A)  # 01101010
         self.rf.write_register(CC1101.MDMCFG4, 0x5A)
         self.rf.write_register(CC1101.MDMCFG3, 0x83)
-        # 00000000 2-FSK, no manchester encoding/decoding, no preamble/sync
-        self.rf.write_register(CC1101.MDMCFG2, 0x00)
+        self.rf.write_register(CC1101.MDMCFG2, 0x00)  # 00000000 2-FSK, no manchester encoding/decoding, no preamble/sync
         self.rf.write_register(CC1101.MDMCFG1, 0x22)  # 00100010
         self.rf.write_register(CC1101.MDMCFG0, 0xF8)  # 11111000
         self.rf.write_register(CC1101.CHANNR, 0x00)  # 00000000
         self.rf.write_register(CC1101.DEVIATN, 0x50)
-        # 00010111 use index 7 in PA table
-        self.rf.write_register(CC1101.FREND0, 0x17)
-        # 00011000  PO timeout Approx. 146microseconds - 171microseconds, Auto calibrate When going from IDLE to RX or TX (or FSTXON)
-        self.rf.write_register(CC1101.MCSM0, 0x18)
+        self.rf.write_register(CC1101.FREND0, 0x17)  # 00010111 use index 7 in PA table
+        self.rf.write_register(CC1101.MCSM0, 0x18)  # 00011000  PO timeout Approx. 146microseconds - 171microseconds, Auto calibrate When going from IDLE to RX or TX (or FSTXON)
         self.rf.write_register(CC1101.FSCAL3, 0xA9)  # 10101001
         self.rf.write_register(CC1101.FSCAL2, 0x2A)  # 00101010
         self.rf.write_register(CC1101.FSCAL1, 0x00)  # 00000000
         self.rf.write_register(CC1101.FSCAL0, 0x11)  # 00010001
-        # 01011001 For test only. Do not write to this register.
-        self.rf.write_register(CC1101.FSTEST, 0x59)
-        # 10000001 For test only. Do not write to this register.
-        self.rf.write_register(CC1101.TEST2, 0x81)
-        # 00110101 For test only. Do not write to this register.
-        self.rf.write_register(CC1101.TEST1, 0x35)
-        # 00001011 For test only. Do not write to this register.
-        self.rf.write_register(CC1101.TEST0, 0x0B)
-        # 00010010 Enable infinite length packets, CRC disabled, Turn data whitening off, Serial Synchronous mode
-        self.rf.write_register(CC1101.PKTCTRL0, 0x12)
+        self.rf.write_register(CC1101.FSTEST, 0x59)  # 01011001 For test only. Do not write to this register.
+        self.rf.write_register(CC1101.TEST2, 0x81)  # 10000001 For test only. Do not write to this register.
+        self.rf.write_register(CC1101.TEST1, 0x35)  # 00110101 For test only. Do not write to this register.
+        self.rf.write_register(CC1101.TEST0, 0x0B)  # 00001011 For test only. Do not write to this register.
+        self.rf.write_register(CC1101.PKTCTRL0, 0x12)  # 00010010 Enable infinite length packets, CRC disabled, Turn data whitening off, Serial Synchronous mode
         self.rf.write_register(CC1101.ADDR, 0x00)  # 00000000
-        # 11111111  Not used, no hardware packet handling
-        self.rf.write_register(CC1101.PKTLEN, 0xFF)
+        self.rf.write_register(CC1101.PKTLEN, 0xFF)  # 11111111  Not used, no hardware packet handling
 
         self.rf.write_burst(CC1101.PATABLE | CC1101.WRITE_BURST, bytearray(
             (0x6F, 0x26, 0x2E, 0x8C, 0x87, 0xCD, 0xC7, 0xC0)))
@@ -323,10 +314,8 @@ class ITHO:
         self.rf.write_register(CC1101.MDMCFG4, 0x5A)
         self.rf.write_register(CC1101.MDMCFG3, 0x83)
         self.rf.write_register(CC1101.DEVIATN, 0x50)
-        # GDO0_Z_EN_N. When this output is 0, GDO0 is configured as input (for serial TX data).
-        self.rf.write_register(CC1101.IOCFG0, 0x2D)
-        # Serial Clock. Synchronous to the data in synchronous serial mode.
-        self.rf.write_register(CC1101.IOCFG1, 0x0B)
+        self.rf.write_register(CC1101.IOCFG0, 0x2D)  # GDO0_Z_EN_N. When this output is 0, GDO0 is configured as input (for serial TX data).
+        self.rf.write_register(CC1101.IOCFG1, 0x0B)  # Serial Clock. Synchronous to the data in synchronous serial mode.
 
         self.rf.write_command(CC1101.STX)
         self.rf.write_command(CC1101.SIDLE)
@@ -374,16 +363,13 @@ class ITHO:
         self.rf.write_register(CC1101.FREQ2, 0x21)
         self.rf.write_register(CC1101.FREQ1, 0x65)
         self.rf.write_register(CC1101.FREQ0, 0x6A)
-        # GD00 High impedance (3-state)
-        self.rf.write_register(CC1101.IOCFG0, 0x2E)
-        # GD02 Assert when sync word has been sent/received, and de-asserts at end of packet
-        self.rf.write_register(CC1101.IOCFG2, 0x06)
+        self.rf.write_register(CC1101.IOCFG0, 0x2E)  # GD00 High impedance (3-state)
+        self.rf.write_register(CC1101.IOCFG2, 0x06)  # GD02 Assert when sync word has been sent/received, and de-asserts at end of packet
         self.rf.write_register(CC1101.FSCTRL1, 0x06)
         self.rf.write_register(CC1101.FSCTRL0, 0x00)
         self.rf.write_register(CC1101.MDMCFG4, 0x5A)
         self.rf.write_register(CC1101.MDMCFG3, 0x83)
-        # Enable digital DC blocking filter before demodulator, 2-FSK, Disable Manchester encoding/decoding, No preamble/sync
-        self.rf.write_register(CC1101.MDMCFG2, 0x00)
+        self.rf.write_register(CC1101.MDMCFG2, 0x00)  # Enable digital DC blocking filter before demodulator, 2-FSK, Disable Manchester encoding/decoding, No preamble/sync
         self.rf.write_register(CC1101.MDMCFG1, 0x22)  # Disable FEC
         self.rf.write_register(CC1101.MDMCFG0, 0xF8)
         self.rf.write_register(CC1101.CHANNR, 0x00)
@@ -404,8 +390,7 @@ class ITHO:
         self.rf.write_register(CC1101.TEST2, 0x81)
         self.rf.write_register(CC1101.TEST1, 0x35)
         self.rf.write_register(CC1101.TEST0, 0x0B)
-        # No address check, append two bytes with status RSSI/LQI/CRC OK,
-        self.rf.write_register(CC1101.PKTCTRL1, 0x04)
+        self.rf.write_register(CC1101.PKTCTRL1, 0x04)  # No address check, append two bytes with status RSSI/LQI/CRC OK,
         # Infinite packet length mode, CRC disabled for TX and RX, No data whitening, Asynchronous serial mode, Data in on GDO0 and data out on either of the GDOx pins
         self.rf.write_register(CC1101.PKTCTRL0, 0x32)
         self.rf.write_register(CC1101.ADDR, 0x00)

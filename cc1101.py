@@ -121,26 +121,21 @@ class CC1101:
     SFSTXON = const(0x31)  # Enable/calibrate frequency synthesizer
     SXOFF = const(0x32)  # Turn off crystal oscillator
     SCAL = const(0x33)  # Calibrate frequency synthesizer and disable
-    # Enable RX. Perform calibration first if coming from IDLE and MCSM0.FS_AUTOCAL=1.
-    SRX = const(0x34)
+    SRX = const(0x34)  # Enable RX. Perform calibration first if coming from IDLE and MCSM0.FS_AUTOCAL=1.
     STX = const(0x35)  # Enable TX
     SIDLE = const(0x36)  # Exit RX / TX
     SAFC = const(0x37)  # AFC adjustment of freq synthesizer
     SWOR = const(0x38)  # Start automatic RX polling sequence
     SPWD = const(0x39)  # Enter power down mode when CSn goes high
-    # Flush the RX FIFO buffer. Only issue SFRX in IDLE or RXFIFO_OVERFLOW states.
-    SFRX = const(0x3A)
-    # Flush the TX FIFO buffer. Only issue SFTX in IDLE or TXFIFO_UNDERFLOW states.
-    SFTX = const(0x3B)
+    SFRX = const(0x3A)  # Flush the RX FIFO buffer. Only issue SFRX in IDLE or RXFIFO_OVERFLOW states.
+    SFTX = const(0x3B)  # Flush the TX FIFO buffer. Only issue SFTX in IDLE or TXFIFO_UNDERFLOW states.
     SWORRST = const(0x3C)  # Reset real time clock to Event1 value
-    # No operation. May be used to get access to the chip status byte.
-    SNOP = const(0x3D)
+    SNOP = const(0x3D)  # No operation. May be used to get access to the chip status byte.
 
     # Bit fields for chip status byte
     STATUS_CHIP_RDYn = const(0x80)  # Should be low when using SPI interface
     STATUS_STATE = const(0x70)
-    # Bytes available in RX FIFO or bytes free in TX FIFO
-    STATUS_FIFO_BYTES_AVAILABLE = const(0x0F)
+    STATUS_FIFO_BYTES_AVAILABLE = const(0x0F)  # Bytes available in RX FIFO or bytes free in TX FIFO
 
     # Masks to retrieve status bit
     BITS_TX_FIFO_UNDERFLOW = const(0x80)
@@ -177,8 +172,7 @@ class CC1101:
     STATE_RX = const(0x10)  # Receive mode
     STATE_TX = const(0x20)  # Transmit mode
     STATE_FSTXON = const(0x30)  # Fast TX ready
-    # Frequency synthesizer calibration is running
-    STATE_CALIBRATE = const(0x40)
+    STATE_CALIBRATE = const(0x40)  # Frequency synthesizer calibration is running
     STATE_SETTLING = const(0x50)  # PLL is settling
     STATE_RXFIFO_OVERFLOW = const(0x60)  # RX FIFO has overflowed
     STATE_TXFIFO_UNDERFLOW = const(0x70)  # TX FIFO has underflowed
