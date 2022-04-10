@@ -69,12 +69,12 @@ A small web user-interface is included based on [ahttpserver](https://github.com
 
 The three panels on the UI are collapsable (accordions). The bottom one is normally collapsed.
 
-For debug purposes the webserver can be stopped by calling *IP address of your microcontroller*:80/api/stop or by pressing the separate button on the Wemos board. If you are using a different board then the Wemos S2 Pico remove the following line from *contoller.py*:
+For debug purposes the webserver can be stopped by calling *IP address of your microcontroller*:80/api/stop or by pressing the separate button on the Wemos board. If you are using a different board then the Wemos S2 Pico remove the following line from *controller.py*:
 
 ```python
 import s2pico
 ```
-Module s2pico contains definitions for the specific hardware an S2 Pico has (button, led, OLED). The cool thing is that this module is included in the MicroPython version for the S2 Pico.
+Module s2pico contains definitions for the specific hardware an S2 Pico has (button, led, OLED). A nice feature is that this module is included in the MicroPython version for the S2 Pico.
 
 Also, in the line below replace *s2pico.button* with *machine.Pin(pin number for button on your board)*
 
