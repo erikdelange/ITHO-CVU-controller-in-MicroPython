@@ -42,7 +42,7 @@ File *cc1101.py* contains the CC1101 driver. It is inspired by various versions 
 
 ### ITHO contoller
 
-The actual controller for the ITHO CVE can be found in *itho.py*. It is a MicroPython version from [letscontrolit/ESPEasyPluginPlayground](https://github.com/letscontrolit/ESPEasyPluginPlayground/tree/master/libraries%20_PLUGIN145%20ITHO%20FAN/Itho) which in turn is based on the code from [Arjan Hiemstra](https://github.com/arjenhiemstra). Functionally the controller matches the works mentioned above.
+The actual controller for the ITHO CVE can be found in *itho.py*. It is a MicroPython version from [letscontrolit/ESPEasyPluginPlayground](https://github.com/letscontrolit/ESPEasyPluginPlayground/tree/master/libraries%20_PLUGIN145%20ITHO%20FAN/Itho) which in turn is based on the code from [Arjen Hiemstra](https://github.com/arjenhiemstra). Functionally the controller matches the works mentioned above.
 As with the driver for the CC1101 all configuration must be done in *config.py*. Initially you won't be aware of your device type and device id to use. These can be discovered by running *itho.py* and pressing the buttons on your physical ITHO remote. Output such as below will appear when for example the Auto button is pressed:
 
     listening to remote commands
