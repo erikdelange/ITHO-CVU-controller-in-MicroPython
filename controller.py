@@ -11,10 +11,28 @@ from ahttpserver import CRLF, MimeType, ResponseHeader, Server, StatusLine, send
 from itho import ITHOREMOTE
 
 # Run times for scheduled tasks
-# format = [hh, mm]
-start_low = [22, 30]
-start_medium = [7, 0]
-ntp_time_sync = [5, 0]
+# format = "task name": [hh, mm]
+tasks = {
+    "start_low": [22, 30],
+    "start_medium": [7, 0],
+    "ntp_time_sync": [5, 0]
+}
+
+try:
+    # load previously saved run times (if found)
+    with open("tasks.json") as fp:
+        temp = json.loads(fp.read())
+
+    # reject file if keys and data types don't match dict 'tasks'
+    if not all(key in temp for key in tasks):
+        raise KeyError("missing key in tasks.json")
+    for key in temp:
+        if not (type(temp[key]) is list and len(temp[key]) == 2):
+            raise TypeError("expected list with length of 2")
+
+    tasks = temp
+except (OSError, ValueError, KeyError, TypeError) as e:
+    sys.print_exception(e)
 
 remote = ITHOREMOTE()
 
@@ -49,9 +67,8 @@ async def api_init(reader, writer, request):
     writer.write(CRLF)
     await writer.drain()
     settings = dict()
-    settings["start_low"] = "{:02d}:{:02d}".format(start_low[0], start_low[1])
-    settings["start_medium"] = "{:02d}:{:02d}".format(
-        start_medium[0], start_medium[1])
+    settings["start_low"] = "{:02d}:{:02d}".format(tasks["start_low"][0], tasks["start_low"][1])
+    settings["start_medium"] = "{:02d}:{:02d}".format(tasks["start_medium"][0], tasks["start_medium"][1])
     writer.write(json.dumps(settings))
 
 
@@ -63,8 +80,7 @@ async def api_datetime(reader, writer, request):
     writer.write(CRLF)
     await writer.drain()
     t = time.localtime()
-    timestring = "{:02d}-{:02d}-{:04d} {:02d}:{:02d}:{:02d}".format(
-        t[2], t[1], t[0], t[3], t[4], t[5])
+    timestring = "{:02d}-{:02d}-{:04d} {:02d}:{:02d}:{:02d}".format(t[2], t[1], t[0], t[3], t[4], t[5])
     writer.write(json.dumps({"datetime": timestring}))
 
 
@@ -77,12 +93,17 @@ async def api_set(reader, writer, request):
     await writer.drain()
     parameters = request["parameters"]
     if "start_low" in parameters:
-        start_low[0] = int(parameters["start_low"][:2])
-        start_low[1] = int(parameters["start_low"][3:])
+        tasks["start_low"][0] = int(parameters["start_low"][:2])
+        tasks["start_low"][1] = int(parameters["start_low"][3:])
     if "start_medium" in parameters:
-        start_medium[0] = int(parameters["start_medium"][:2])
-        start_medium[1] = int(parameters["start_medium"][3:])
+        tasks["start_medium"][0] = int(parameters["start_medium"][:2])
+        tasks["start_medium"][1] = int(parameters["start_medium"][3:])
     writer.write(json.dumps(parameters))
+    try:
+        with open("tasks.json", "w") as fp:
+            json.dump(tasks, fp)
+    except Exception as e:
+        sys.print_exception(e)
 
 
 @app.route("GET", "/api/click")
@@ -106,9 +127,9 @@ async def api_button_low(reader, writer, request):
             remote.timer20()
         elif value == "30%20Min":
             remote.timer30()
-        elif value == "join":
+        elif value == "Join":
             remote.join()
-        elif value == "leave":
+        elif value == "Leave":
             remote.leave()
     writer.write(json.dumps(parameters))
 
@@ -151,11 +172,11 @@ async def scheduler():
 
         # just three tasks, no complex data structures needed
         # check tasks one by one to see if they are elegible to run
-        if elegible(start_low) is True:
+        if elegible(tasks["start_low"]) is True:
             remote.low()
-        if elegible(start_medium) is True:
+        if elegible(tasks["start_medium"]) is True:
             remote.medium()
-        if elegible(ntp_time_sync) is True:
+        if elegible(tasks["ntp_time_sync"]) is True:
             asyncio.create_task(ntp.sync())
         prev_mins = curr_mins
         await asyncio.sleep(60)  # wakeup every minute (at most)

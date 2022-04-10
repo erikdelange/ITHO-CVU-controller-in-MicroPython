@@ -61,7 +61,7 @@ This information can then be used to adjust *config.py*.
 
 The main program can be found in *controller.py*. The core function is *scheduler()* which wakes up every minute to see if commands need to be sent to the CVE. Also, as the scheduler is dependent on the correct time, and I am not sure what the accuracy of the ESP32S2's internal clock is once per 24 hrs this clock is synchronized with a ntp server (see *ntp.py*).
 
-A small web user-interface is included based on [ahttpserver](https://github.com/erikdelange/MicroPython-HTTP-Server). This can be used to manually control the CVE but also to set the time when the CVE must be switched to low speed and when back to medium speed. In the current implementation these times are not recorded in non-volatile memory, so if you decide to deviate from the hardcoded moments after every reset or power cycle they have to be re-entered.
+A small web user-interface is included based on [ahttpserver](https://github.com/erikdelange/MicroPython-HTTP-Server). This can be used to manually control the CVE but also to set the time when the CVE must be switched to low speed and when back to medium speed. The default run times for the tasks are hardcoded in dict *tasks*. If you deviate from these times they are saved in file *tasks.json* which if present supersedes the default values.
 
 The main program is based on asyncio which makes it easy to execute multiple tasks such as running the scheduler, an HTTP server and checking the user-button.
 
