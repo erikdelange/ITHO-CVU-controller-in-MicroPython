@@ -21,7 +21,7 @@ DEFAULT_GD02_PIN = 38  # Default pin connected to CC101's GD02 pin. Dependent on
 # running itho.py
 
 ITHO_DEVICE_TYPE = 22  # Your Itho remote device type, 22 is an Itho RFT remote
-ITHO_DEVICE_ID = [116, 233, 94]  # Your Itho remote device id
+ITHO_DEVICE_ID = [11, 22, 33]  # Your Itho remote device id
 
 # Command bytes for the various commands.
 # The default values come from an Itho RFT remote, production year 2021.
