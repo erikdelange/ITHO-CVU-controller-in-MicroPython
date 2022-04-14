@@ -18,14 +18,17 @@ tasks = {
     "ntp_time_sync": [5, 0]
 }
 
+TASKS_FILE = "tasks.json"
+
 try:
     # load previously saved run times (if found)
-    with open("tasks.json") as fp:
+    with open(TASKS_FILE) as fp:
         temp = json.loads(fp.read())
 
-    # reject file if keys and data types don't match dict 'tasks'
+    # json format and content check: reject file if
+    # keys and data types don't match dict 'tasks'
     if not all(key in temp for key in tasks):
-        raise KeyError("missing key in tasks.json")
+        raise KeyError("missing key in {}".format(TASKS_FILE))
     for key in temp:
         if not (type(temp[key]) is list and len(temp[key]) == 2):
             raise TypeError("expected list with length of 2")
@@ -34,7 +37,7 @@ try:
 except (ValueError, KeyError, TypeError) as e:
     sys.print_exception(e)
 except OSError as e:
-    print(e, "- file tasks.json not found")
+    print(e, "- file {} not found".format(TASKS_FILE))
 
 remote = ITHOREMOTE()
 
@@ -102,7 +105,7 @@ async def api_set(reader, writer, request):
         tasks["start_medium"][1] = int(parameters["start_medium"][3:])
     writer.write(json.dumps(parameters))
     try:
-        with open("tasks.json", "w") as fp:
+        with open(TASKS_FILE, "w") as fp:
             json.dump(tasks, fp)
     except Exception as e:
         sys.print_exception(e)

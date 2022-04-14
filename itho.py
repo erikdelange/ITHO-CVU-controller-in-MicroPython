@@ -3,7 +3,6 @@
 # MicroPython version of the C code found in:
 # https://github.com/letscontrolit/ESPEasyPluginPlayground/tree/master/libraries%20_PLUGIN145%20ITHO%20FAN/Itho
 #
-# TODO: test join and leave
 
 import time
 
@@ -46,19 +45,19 @@ class ITHOCOMMAND:
         """ Return commandbytes for command """
         if command == cls.JOIN:
             return cls.JOIN_BYTES
-        elif command == ITHOCOMMAND.LEAVE:
+        elif command == cls.LEAVE:
             return cls.LEAVE_BYTES
-        elif command == ITHOCOMMAND.LOW:
+        elif command == cls.LOW:
             return cls.LOW_BYTES
-        elif command == ITHOCOMMAND.MEDIUM:
+        elif command == cls.MEDIUM:
             return cls.MEDIUM_BYTES
-        elif command == ITHOCOMMAND.HIGH:
+        elif command == cls.HIGH:
             return cls.HIGH_BYTES
-        elif command == ITHOCOMMAND.TIMER1:
+        elif command == cls.TIMER1:
             return cls.TIMER1_BYTES
-        elif command == ITHOCOMMAND.TIMER2:
+        elif command == cls.TIMER2:
             return cls.TIMER2_BYTES
-        elif command == ITHOCOMMAND.TIMER3:
+        elif command == cls.TIMER3:
             return cls.TIMER3_BYTES
         else:
             return cls.LOW_BYTES
@@ -571,7 +570,6 @@ class ITHO:
         itho_packet.data_decoded[1] = self.device_id[0]
         itho_packet.data_decoded[2] = self.device_id[1]
         itho_packet.data_decoded[3] = self.device_id[2]
-
         itho_packet.data_decoded[4] = self.counter
 
         command_bytes = ITHOCOMMAND.commandbytes(ITHOCOMMAND.JOIN)
@@ -621,7 +619,6 @@ class ITHO:
         itho_packet.data_decoded[1] = self.device_id[0]
         itho_packet.data_decoded[2] = self.device_id[1]
         itho_packet.data_decoded[3] = self.device_id[2]
-
         itho_packet.data_decoded[4] = self.counter
 
         command_bytes = ITHOCOMMAND.commandbytes(ITHOCOMMAND.LEAVE)
@@ -706,10 +703,10 @@ if __name__ == "__main__":
     itho = ITHO()
 
     # For send command demo record adjust device_type and
-    # device_id to the values you've just discover and
+    # device_id to the values you've just discovered and
     # uncomment the 3 lines below
     # itho.device_type = 22  # Your RFT remote type (or adjust in config.py)
-    # itho.device_id = [11, 22, 22]  # Your RFT remote ID (or adjust in config.py)
+    # itho.device_id = [11, 22, 33]  # Your RFT remote ID (or adjust in config.py)
     # itho.send_command(ITHOCOMMAND.HIGH)  # should be audible
 
     # Listen for commands
