@@ -1,46 +1,26 @@
-import ntp
 import json
-import machine
-import sys
+import logging
 import time
-import uasyncio as asyncio
+
+import machine
 import s2pico
+import uasyncio as asyncio
 
 import abutton
-from ahttpserver import CRLF, MimeType, ResponseHeader, Server, StatusLine, sendfile
+import ntp
+from ahttpserver import (CRLF, MimeType, ResponseHeader, Server, StatusLine, sendfile)
 from itho import ITHOREMOTE
+from tasks import Tasks
 
-# Run times for scheduled tasks
-# format = "task name": [hh, mm]
-tasks = {
-    "start_low": [22, 30],
-    "start_medium": [7, 0],
-    "ntp_time_sync": [5, 0]
-}
 
-TASKS_FILE = "tasks.json"
+print(f"Starting {__name__}")
+logger = logging.getLogger(__name__)
 
-try:
-    # load previously saved run times (if found)
-    with open(TASKS_FILE) as fp:
-        temp = json.loads(fp.read())
-
-    # json format and content check: reject file if
-    # keys and data types don't match dict 'tasks'
-    if not all(key in temp for key in tasks):
-        raise KeyError("missing key in {}".format(TASKS_FILE))
-    for key in temp:
-        if not (type(temp[key]) is list and len(temp[key]) == 2):
-            raise TypeError("expected list with length of 2")
-
-    tasks = temp
-except (ValueError, KeyError, TypeError) as e:
-    sys.print_exception(e)
-except OSError as e:
-    print(e, "- file {} not found".format(TASKS_FILE))
-
+# Controller
+tasks = Tasks()
 remote = ITHOREMOTE()
 
+# User interface
 app = Server()
 
 
@@ -72,8 +52,8 @@ async def api_init(reader, writer, request):
     writer.write(CRLF)
     await writer.drain()
     settings = dict()
-    settings["start_low"] = "{:02d}:{:02d}".format(tasks["start_low"][0], tasks["start_low"][1])
-    settings["start_medium"] = "{:02d}:{:02d}".format(tasks["start_medium"][0], tasks["start_medium"][1])
+    settings["start_low"] = "{:02d}:{:02d}".format(tasks.task["start_low"][0], tasks.task["start_low"][1])
+    settings["start_medium"] = "{:02d}:{:02d}".format(tasks.task["start_medium"][0], tasks.task["start_medium"][1])
     writer.write(json.dumps(settings))
 
 
@@ -98,18 +78,13 @@ async def api_set(reader, writer, request):
     await writer.drain()
     parameters = request["parameters"]
     if "start_low" in parameters:
-        tasks["start_low"][0] = int(parameters["start_low"][:2])
-        tasks["start_low"][1] = int(parameters["start_low"][3:])
+        tasks.task["start_low"][0] = int(parameters["start_low"][:2])
+        tasks.task["start_low"][1] = int(parameters["start_low"][3:])
     if "start_medium" in parameters:
-        tasks["start_medium"][0] = int(parameters["start_medium"][:2])
-        tasks["start_medium"][1] = int(parameters["start_medium"][3:])
+        tasks.task["start_medium"][0] = int(parameters["start_medium"][:2])
+        tasks.task["start_medium"][1] = int(parameters["start_medium"][3:])
     writer.write(json.dumps(parameters))
-    try:
-        with open(TASKS_FILE, "w") as fp:
-            json.dump(tasks, fp)
-    except Exception as e:
-        sys.print_exception(e)
-
+    tasks.save()
 
 @app.route("GET", "/api/click")
 async def api_button_low(reader, writer, request):
@@ -154,7 +129,7 @@ async def api_stop(reader, writer, request):
     writer.write(ResponseHeader.CONNECTION_CLOSE)
     writer.write(CRLF)
     await writer.drain()
-    sys.exit()
+    raise(KeyboardInterrupt)
 
 
 async def scheduler():
@@ -177,34 +152,40 @@ async def scheduler():
 
         # just three tasks, no complex data structures needed
         # check tasks one by one to see if they are elegible to run
-        if elegible(tasks["start_low"]) is True:
+        if elegible(tasks.task["start_low"]) is True:
             remote.low()
-        if elegible(tasks["start_medium"]) is True:
+        if elegible(tasks.task["start_medium"]) is True:
             remote.medium()
-        if elegible(tasks["ntp_time_sync"]) is True:
+        if elegible(tasks.task["ntp_time_sync"]) is True:
             asyncio.create_task(ntp.sync())
         prev_mins = curr_mins
         await asyncio.sleep(60)  # wakeup every minute (at most)
 
 
-def set_global_exception_handler():
+try:
     def handle_exception(loop, context):
-        # uncaught exceptions raised in route handlers end up here
-        print("global exception handler:", context)
+        # uncaught exceptions end up here
+        import sys
+
+        logger.exception(context["exception"], "global exception handler")
+
+        sys.exit()
+
+    # the user button on the s2pico stops the system
+    def _keyboardinterrupt():
+        raise(KeyboardInterrupt)
+
+    pb = abutton.Pushbutton(s2pico.button, suppress=True)
+    pb.press_func(_keyboardinterrupt, ())
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
 
+    loop.create_task(ntp.sync())  # initial time synchronization
+    loop.create_task(scheduler())
+    loop.create_task(app.start())
 
-try:
-    set_global_exception_handler()
-
-    pb = abutton.Pushbutton(s2pico.button, suppress=True)
-    pb.press_func(sys.exit, ())
-
-    asyncio.create_task(ntp.sync())  # initial time synchronization
-    asyncio.create_task(scheduler())
-    asyncio.run(app.start())  # must be last, does not return
+    loop.run_forever()
 except KeyboardInterrupt:
     pass
 finally:

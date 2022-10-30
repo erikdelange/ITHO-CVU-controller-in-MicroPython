@@ -8,9 +8,8 @@ import time
 
 from machine import Pin
 
-from cc1101 import CC1101
-
 import config
+from cc1101 import CC1101
 
 
 class CC1101MESSAGE:
@@ -670,7 +669,7 @@ class ITHO:
 
 class ITHOREMOTE:
     def __init__(self, device_type=config.ITHO_DEVICE_TYPE, device_id=config.ITHO_DEVICE_ID):
-        self.itho = ITHO()
+        self.itho = ITHO(spi_id=config.DEFAULT_SPI_ID, ss=config.DEFAULT_SS_PIN, gd02=config.DEFAULT_GD02_PIN)
         self.itho.device_type = device_type
         self.itho.device_id = device_id
 
@@ -700,11 +699,11 @@ class ITHOREMOTE:
 
 
 if __name__ == "__main__":
-    itho = ITHO()
+    itho = ITHO(spi_id=config.DEFAULT_SPI_ID, ss=config.DEFAULT_SS_PIN, gd02=config.DEFAULT_GD02_PIN)
 
-    # For send command demo record adjust device_type and
-    # device_id to the values you've just discovered and
-    # uncomment the 3 lines below
+    # For send command demo adjust device_type and device_id to the
+    # values you've just discovered and uncomment the 3 lines below
+    #
     # itho.device_type = 22  # Your RFT remote type (or adjust in config.py)
     # itho.device_id = [11, 22, 33]  # Your RFT remote ID (or adjust in config.py)
     # itho.send_command(ITHOCOMMAND.HIGH)  # should be audible

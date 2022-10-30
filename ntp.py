@@ -10,10 +10,10 @@ async def sync(tries=5, winter_offset=+1, summer_offset=+2):
 
     From https://forum.micropython.org/viewtopic.php?f=2&t=4034
 
-    :param tries int: number of retries if NTP server cannot be reached
-    :param winter_offset int: offset from UTC for local winter time (default is for CET)
-    :param summer_offset int: offset from UTC for local summer time (default is for CET)
-    :return bool: True if sync succesful else False
+    :param int tries: number of retries if NTP server cannot be reached
+    :param int winter_offset: offset from UTC for local winter time (default is for CET)
+    :param int summer_offset: offset from UTC for local summer time (default is for CET)
+    :return bool: True if sync successful else False
     """
     print("Synchronize time with", ntptime.host, end="")
 
@@ -42,9 +42,9 @@ async def sync(tries=5, winter_offset=+1, summer_offset=+2):
     t2 = time.mktime((year, 10, (31 - (int(5 * year / 4 + 1)) % 7), 2, 0, 0, 0, 0))
 
     if t >= t1 and t < t2:
-        tm[4] += 2  # local time offset from UTC in summer, +2 for CET
+        tm[4] += summer_offset  # local time offset from UTC in summer
     else:
-        tm[4] += 1  # local time offset from UTC in winter, +1 for CET
+        tm[4] += winter_offset  # local time offset from UTC in winter
 
     machine.RTC().datetime(tm)
 

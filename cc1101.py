@@ -11,16 +11,15 @@
 
 import time
 
-from machine import Pin, SPI
+from machine import SPI, Pin
 
 import config  # hardware dependent configuration
 
-
 CHIP = config.CHIP
-DEFAULT_SPI_ID = config.DEFAULT_SPI_ID
+SPI_ID = config.DEFAULT_SPI_ID
 SPI_ID_LIST = config.SPI_ID_LIST
 MISO_PIN_PER_SPI_ID = config.MISO_PIN_PER_SPI_ID
-DEFAULT_SS_PIN = config.DEFAULT_SS_PIN
+SS_PIN = config.DEFAULT_SS_PIN
 
 
 class CC1101:
@@ -177,7 +176,7 @@ class CC1101:
     STATE_RXFIFO_OVERFLOW = const(0x60)  # RX FIFO has overflowed
     STATE_TXFIFO_UNDERFLOW = const(0x70)  # TX FIFO has underflowed
 
-    def __init__(self, spi_id=DEFAULT_SPI_ID, ss=DEFAULT_SS_PIN):
+    def __init__(self, spi_id=SPI_ID, ss=SS_PIN):
         """ Create a CC1101 object connected to a microcontoller SPI channel
 
         :param int spi_id: microcontroller SPI channel id
@@ -405,7 +404,7 @@ class CC1101:
 
 if __name__ == "__main__":
     # Demo
-    rf = CC1101()
+    rf = CC1101(config.DEFAULT_SPI_ID, config.DEFAULT_SS_PIN)
     rf.init()
 
     # Read status byte
