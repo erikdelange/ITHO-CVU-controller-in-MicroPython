@@ -8,7 +8,8 @@ import uasyncio as asyncio
 
 import abutton
 import ntp
-from ahttpserver import (CRLF, MimeType, ResponseHeader, Server, StatusLine, sendfile)
+from ahttpserver import (Server, sendfile)
+from ahhtpserver.response import (CRLF, MimeType, ResponseHeader, StatusLine)
 from itho import ITHOREMOTE
 from tasks import Tasks
 
@@ -166,12 +167,10 @@ try:
     def handle_exception(loop, context):
         # uncaught exceptions end up here
         import sys
-
         logger.exception(context["exception"], "global exception handler")
-
         sys.exit()
 
-    # the user button on the s2pico stops the system
+    # the user button on the s2pico stops the asyncio scheduler
     def _keyboardinterrupt():
         raise(KeyboardInterrupt)
 
