@@ -2,7 +2,7 @@
 
 ## Problem
 
-At home, I've got an ITHO central ventilation unit (CVU) with builtin humidity and CO2 sensor. However, these sensors only work when the CVU is set to Auto mode. In this mode the fan runs at medium speed. At night this is not needed and also the fan is too noisy for me. So I wanted to be able to switch the CVU to low speed around 23:00 hrs, and return to Auto mode early in the morning.
+At home, I've got an ITHO central ventilation unit (CVU) with builtin humidity and CO2 sensor. However, these sensors only work when the CVU is set to Auto mode. In this mode the fan in principle runs at medium speed. At night this is not needed and also the fan is too noisy for me. So I wanted to be able to switch the CVU to low speed around 23:00 hrs, and return to Auto mode early in the morning.
 
 An excellent job for a microcontroller. Many enthusiast have developed hardware and software to control an ITHO CVU. However, most code is written in C, and I use microcontrollers running MicroPython. So, I converted these C libraries into MicroPython versions. Of course that was the easy part. All credits go to the developers of these C libraries for their research in the communication protocol ITHO uses.
 
@@ -25,7 +25,7 @@ Aside from a microcontroller - for this project I'm using a [Wemos S2 Pico](http
 | 7 GD00 | -   | Unused
 | 8 SS	 | P34 | Chip select a.k.a slave select
 
-The picture shows my actual setup using a breadboard. Note that I've made a carrier board for the CC1101 module as its pin pitch is slightly smaller than the 1.27mm used on the breadboard. An advantage of using a Wemos S2 Pico is that it can be connected to a USB-C cable for power. It also has a small 132x32 OLED screen which I'm not using here.
+The picture shows my actual setup using a breadboard. Note that I've made a carrier board for the CC1101 module as its pin pitch is slightly smaller than the 1.27mm used on the breadboard. An advantage of using a Wemos S2 Pico is that it can be connected to a USB-C cable for power.
 
 ![breadboard](breadboard.png)
 

@@ -7,6 +7,7 @@
 import time
 
 from machine import Pin
+from micropython import const
 
 import config
 from cc1101 import CC1101
@@ -247,16 +248,12 @@ class ITHOPACKET:
 class ITHO:
     SEND_TRIES = const(3)
 
-    def __init__(self, spi_id=config.DEFAULT_SPI_ID, ss=config.DEFAULT_SS_PIN, gd02=config.DEFAULT_GD02_PIN):
+    def __init__(self, rf):
         """ Create ITHO CVE controller
 
-        :param int spi_id: microcontroller SPI channel id
-        :param int ss: microcontroller pin number for slave select (SS)
-        :param int gd02: microcontroller pin number connected to port GD02 of the CC1101
+        :param CC1101 rf: CC1101 rf transceiver instance
         """
-        self.gd02 = Pin(gd02, mode=Pin.IN)
-        self.rf = CC1101(spi_id=spi_id, ss=ss)
-        self.rf.reset()
+        self.rf = rf
 
         self.device_type = config.ITHO_DEVICE_TYPE
         self.device_id = config.ITHO_DEVICE_ID
@@ -669,7 +666,8 @@ class ITHO:
 
 class ITHOREMOTE:
     def __init__(self, device_type=config.ITHO_DEVICE_TYPE, device_id=config.ITHO_DEVICE_ID):
-        self.itho = ITHO(spi_id=config.DEFAULT_SPI_ID, ss=config.DEFAULT_SS_PIN, gd02=config.DEFAULT_GD02_PIN)
+        cc1101 = CC1101(config.SPI_ID, config.SS_PIN, config.GD02_PIN)
+        self.itho = ITHO(cc1101)
         self.itho.device_type = device_type
         self.itho.device_id = device_id
 
@@ -699,7 +697,15 @@ class ITHOREMOTE:
 
 
 if __name__ == "__main__":
-    itho = ITHO(spi_id=config.DEFAULT_SPI_ID, ss=config.DEFAULT_SS_PIN, gd02=config.DEFAULT_GD02_PIN)
+
+    cc1101 = CC1101(config.SPI_ID, config.SS_PIN, config.GD02_PIN)
+
+    itho = ITHO(cc1101)
+
+    # Listen for commands
+    # Use this to discover the device type and id of your remote and
+    # the specific command bytes for the buttons on your remote.
+    # Usage: Start this program and press the buttons on your remote.
 
     # For send command demo adjust device_type and device_id to the
     # values you've just discovered and uncomment the 3 lines below
@@ -707,11 +713,6 @@ if __name__ == "__main__":
     # itho.device_type = 22  # Your RFT remote type (or adjust in config.py)
     # itho.device_id = [11, 22, 33]  # Your RFT remote ID (or adjust in config.py)
     # itho.send_command(ITHOCOMMAND.HIGH)  # should be audible
-
-    # Listen for commands
-    # Use this to discover the device type and id of your remote and
-    # the specific command bytes for the buttons on your remote.
-    # Usage: Start this program and press the buttons on your remote.
 
     print("listening to remote commands")
 
@@ -721,7 +722,7 @@ if __name__ == "__main__":
         global itho_has_packet
         itho_has_packet = True
 
-    itho.gd02.irq(handler=itho_check, trigger=Pin.IRQ_FALLING)
+    itho.rf.gd02.irq(handler=itho_check, trigger=Pin.IRQ_FALLING)
 
     itho.init_receive()
 

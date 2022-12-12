@@ -8,11 +8,10 @@ import uasyncio as asyncio
 
 import abutton
 import ntp
-from ahttpserver import (Server, sendfile)
-from ahhtpserver.response import (CRLF, MimeType, ResponseHeader, StatusLine)
+from ahttpserver import Server, sendfile
+from ahttpserver.response import CRLF, MimeType, ResponseHeader, StatusLine
 from itho import ITHOREMOTE
 from tasks import Tasks
-
 
 print(f"Starting {__name__}")
 logger = logging.getLogger(__name__)
@@ -77,7 +76,7 @@ async def api_set(reader, writer, request):
     writer.write(MimeType.APPLICATION_JSON)
     writer.write(CRLF)
     await writer.drain()
-    parameters = request["parameters"]
+    parameters = request.parameters
     if "start_low" in parameters:
         tasks.task["start_low"][0] = int(parameters["start_low"][:2])
         tasks.task["start_low"][1] = int(parameters["start_low"][3:])
@@ -93,7 +92,7 @@ async def api_button_low(reader, writer, request):
     writer.write(ResponseHeader.CONNECTION_CLOSE)
     writer.write(CRLF)
     await writer.drain()
-    parameters = request["parameters"]
+    parameters = request.parameters
     if "button" in parameters:
         value = parameters["button"]
         if value == "Low":
@@ -136,7 +135,7 @@ async def api_stop(reader, writer, request):
 async def scheduler():
     """ Run scheduled tasks """
 
-    def elegible(scheduled_time):
+    def eligible(scheduled_time):
         """ Check if scheduled time lies between now and the last time the scheduler ran """
         s_mins = scheduled_time[0] * 60 + scheduled_time[1]
 
@@ -152,12 +151,12 @@ async def scheduler():
         curr_mins = tm[0] * 60 + tm[1]
 
         # just three tasks, no complex data structures needed
-        # check tasks one by one to see if they are elegible to run
-        if elegible(tasks.task["start_low"]) is True:
+        # check tasks one by one to see if they are eligible to run
+        if eligible(tasks.task["start_low"]) is True:
             remote.low()
-        if elegible(tasks.task["start_medium"]) is True:
+        if eligible(tasks.task["start_medium"]) is True:
             remote.medium()
-        if elegible(tasks.task["ntp_time_sync"]) is True:
+        if eligible(tasks.task["ntp_time_sync"]) is True:
             asyncio.create_task(ntp.sync())
         prev_mins = curr_mins
         await asyncio.sleep(60)  # wakeup every minute (at most)

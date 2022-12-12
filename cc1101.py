@@ -12,14 +12,9 @@
 import time
 
 from machine import SPI, Pin
+from micropython import const
 
 import config  # hardware dependent configuration
-
-CHIP = config.CHIP
-SPI_ID = config.DEFAULT_SPI_ID
-SPI_ID_LIST = config.SPI_ID_LIST
-MISO_PIN_PER_SPI_ID = config.MISO_PIN_PER_SPI_ID
-SS_PIN = config.DEFAULT_SS_PIN
 
 
 class CC1101:
@@ -176,20 +171,23 @@ class CC1101:
     STATE_RXFIFO_OVERFLOW = const(0x60)  # RX FIFO has overflowed
     STATE_TXFIFO_UNDERFLOW = const(0x70)  # TX FIFO has underflowed
 
-    def __init__(self, spi_id=SPI_ID, ss=SS_PIN):
+    def __init__(self, spi_id, ss, gd02):
         """ Create a CC1101 object connected to a microcontoller SPI channel
 
         :param int spi_id: microcontroller SPI channel id
         :param int ss: microcontroller pin number used for slave select (SS)
+        :param int gd02: microcontroller pin number connected to port GD02 of the CC1101
         """
-        if spi_id not in SPI_ID_LIST:
-            raise ValueError(f"invalid SPI id {spi_id} for {CHIP}")
+        if spi_id not in config.SPI_ID_LIST:
+            raise ValueError(f"invalid SPI id {spi_id} for {config.BOARD}")
 
-        self.miso = Pin(MISO_PIN_PER_SPI_ID[str(spi_id)])
-        self.ss = Pin(ss, Pin.OUT)
+        self.miso = Pin(config.MISO_PIN_PER_SPI_ID[str(spi_id)])
+        self.ss = Pin(ss, mode=Pin.OUT)
+        self.gd02 = Pin(gd02, mode=Pin.IN)
         self.deselect()
         self.spi = SPI(spi_id, baudrate=8000000, polarity=0, phase=0, bits=8,
                        firstbit=SPI.MSB)  # use default pins for mosi, miso and sclk
+        self.reset()
 
     def select(self):
         """ CC1101 chip select """
@@ -203,9 +201,6 @@ class CC1101:
         """ Wait for CC1101 SO to go low """
         while self.miso.value() != 0:
             pass
-
-    def init(self):
-        self.reset()
 
     def reset(self):
         """ CC1101 reset """
@@ -333,12 +328,10 @@ class CC1101:
         :param int length: max number of bytes to read
         :return bytearray: bytes read (can have len() of 0)
         """
-        rx_bytes = self.read_register(
-            CC1101.RXBYTES, CC1101.STATUS_REGISTER) & CC1101.BITS_RX_BYTES_IN_FIFO
+        rx_bytes = self.read_register(CC1101.RXBYTES, CC1101.STATUS_REGISTER) & CC1101.BITS_RX_BYTES_IN_FIFO
 
         # Check for
-        if (self.read_register(CC1101.MARCSTATE,
-                               CC1101.STATUS_REGISTER) & CC1101.BITS_MARCSTATE) == CC1101.MARCSTATE_RXFIFO_OVERFLOW:
+        if (self.read_register(CC1101.MARCSTATE, CC1101.STATUS_REGISTER) & CC1101.BITS_MARCSTATE) == CC1101.MARCSTATE_RXFIFO_OVERFLOW:
             buf = bytearray()  # RX FIFO overflow: return empty array
         else:
             buf = self.read_burst(CC1101.RXFIFO, rx_bytes)
@@ -380,14 +373,12 @@ class CC1101:
 
             while index < len(data):
                 while True:
-                    tx_status = self.read_register_median_of_3(
-                        CC1101.TXBYTES | CC1101.STATUS_REGISTER) & CC1101.BITS_RX_BYTES_IN_FIFO
+                    tx_status = self.read_register_median_of_3(CC1101.TXBYTES | CC1101.STATUS_REGISTER) & CC1101.BITS_RX_BYTES_IN_FIFO
                     if tx_status <= (DATA_LEN - 2):
                         break
 
                 length = DATA_LEN - tx_status
-                length = len(data) - index if (len(data) -
-                                               index) < length else length
+                length = len(data) - index if (len(data) - index) < length else length
 
                 for i in range(length):
                     self.write_register(CC1101.TXFIFO, data[index + i])
@@ -396,31 +387,29 @@ class CC1101:
 
         # Wait until transmission is finished (TXOFF_MODE is expected to be set to 0/IDLE or TXFIFO_UNDERFLOW)
         while True:
-            marcstate = self.read_register(
-                CC1101.MARCSTATE, CC1101.STATUS_REGISTER) & CC1101.BITS_MARCSTATE
+            marcstate = self.read_register(CC1101.MARCSTATE, CC1101.STATUS_REGISTER) & CC1101.BITS_MARCSTATE
             if marcstate in [CC1101.MARCSTATE_IDLE, CC1101.MARCSTATE_TXFIFO_UNDERFLOW]:
                 break
 
 
 if __name__ == "__main__":
     # Demo
-    rf = CC1101(config.DEFAULT_SPI_ID, config.DEFAULT_SS_PIN)
-    rf.init()
+    cc1101 = CC1101(config.SPI_ID, config.SS_PIN, config.GD02_PIN)
 
     # Read status byte
-    status = rf.write_command(CC1101.SNOP)
+    status = cc1101.write_command(CC1101.SNOP)
     print("Status byte", hex(status), bin(status))
 
     # Read version
-    version = rf.read_register(CC1101.VERSION, CC1101.STATUS_REGISTER)
+    version = cc1101.read_register(CC1101.VERSION, CC1101.STATUS_REGISTER)
     print("VERSION", hex(version))
 
     # Prove burst and single register access deliver same results
-    burst = rf.read_burst(CC1101.IOCFG2, 3)
+    burst = cc1101.read_burst(CC1101.IOCFG2, 3)
     for i in range(len(burst)):
         print(hex(burst[i]), end=' ')
     print()
 
     for register in (CC1101.IOCFG2, CC1101.IOCFG1, CC1101.IOCFG0):
-        print(hex(rf.read_register(register)), end=' ')
+        print(hex(cc1101.read_register(register)), end=' ')
     print()

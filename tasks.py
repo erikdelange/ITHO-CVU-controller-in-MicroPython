@@ -1,6 +1,6 @@
 # Storage for scheduled tasks
 #
-# The Taaks class contains a dict with run-times for the scheduled
+# The Tasks class contains a dict with run-times for the scheduled
 # tasks and functions to load this dict from a json file and store
 # its content to a json file.
 #
@@ -8,6 +8,7 @@
 # Released under MIT license
 
 import json
+import logging
 
 
 class Tasks:
@@ -18,7 +19,7 @@ class Tasks:
             "start_low": [22, 30],
             "start_medium": [7, 0],
             "ntp_time_sync": [5, 0]
-        }  # default values for first time use
+        }  # default values for first time use, run-time format = [hh, mm]
 
         self.load()
 
@@ -31,7 +32,7 @@ class Tasks:
             # json format and content check: reject file if keys
             # and value data types don't match dict 'self.tasks'
             if not all(key in temp for key in self.task):
-                raise KeyError(f"missing key in {filename}")
+                raise KeyError(f"missing key in file {filename}")
             for key in temp:
                 if not (type(temp[key]) is list and len(temp[key]) == 2):
                     raise TypeError("expected list with length of 2 "
@@ -40,9 +41,9 @@ class Tasks:
 
             self.task = temp
         except (ValueError, KeyError, TypeError) as e:
-            print(f"{e.__class__.__name__} loading {filename} - {e}")
+            print(f"{e.__class__.__name__} loading file {filename} - {e}")
         except OSError as e:
-            print(f"{e} - file {filename}")
+            print(f"{e} - loading file {filename}")
 
     def save(self, filename=TASKS_FILE):
         try:
