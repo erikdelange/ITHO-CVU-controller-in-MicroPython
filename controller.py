@@ -8,8 +8,7 @@ import uasyncio as asyncio
 
 import abutton
 import ntp
-from ahttpserver import Server, sendfile
-from ahttpserver.response import CRLF, MimeType, ResponseHeader, StatusLine
+from ahttpserver import HTTPResponse, HTTPServer, sendfile
 from itho import ITHOREMOTE
 from tasks import Tasks
 
@@ -21,36 +20,27 @@ tasks = Tasks()
 remote = ITHOREMOTE()
 
 # User interface
-app = Server()
+app = HTTPServer()
 
 
 @app.route("GET", "/")
 async def root(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(MimeType.TEXT_HTML)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, "text/html", close=True)
+    await response.send(writer)
     await sendfile(writer, "index.html")
 
 
 @app.route("GET", "/favicon.ico")
 async def favicon(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(MimeType.IMAGE_X_ICON)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, "image/x-icon", close=True)
+    await response.send(writer)
     await sendfile(writer, "favicon.ico")
 
 
 @app.route("GET", "/api/init")
 async def api_init(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(MimeType.APPLICATION_JSON)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
     settings = dict()
     settings["start_low"] = "{:02d}:{:02d}".format(tasks.task["start_low"][0], tasks.task["start_low"][1])
     settings["start_medium"] = "{:02d}:{:02d}".format(tasks.task["start_medium"][0], tasks.task["start_medium"][1])
@@ -59,11 +49,8 @@ async def api_init(reader, writer, request):
 
 @app.route("GET", "/api/datetime")
 async def api_datetime(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(MimeType.APPLICATION_JSON)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
     t = time.localtime()
     timestring = "{:02d}-{:02d}-{:04d} {:02d}:{:02d}:{:02d}".format(t[2], t[1], t[0], t[3], t[4], t[5])
     writer.write(json.dumps({"datetime": timestring}))
@@ -71,11 +58,8 @@ async def api_datetime(reader, writer, request):
 
 @app.route("GET", "/api/set")
 async def api_set(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(MimeType.APPLICATION_JSON)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
     parameters = request.parameters
     if "start_low" in parameters:
         tasks.task["start_low"][0] = int(parameters["start_low"][:2])
@@ -88,10 +72,8 @@ async def api_set(reader, writer, request):
 
 @app.route("GET", "/api/click")
 async def api_button_low(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, "application/json", close=True)
+    await response.send(writer)
     parameters = request.parameters
     if "button" in parameters:
         value = parameters["button"]
@@ -116,19 +98,15 @@ async def api_button_low(reader, writer, request):
 
 @app.route("GET", "/api/reset")
 async def api_reset(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, close=True)
+    await response.send(writer)
     machine.reset()
 
 
 @app.route("GET", "/api/stop")
 async def api_stop(reader, writer, request):
-    writer.write(StatusLine.OK_200)
-    writer.write(ResponseHeader.CONNECTION_CLOSE)
-    writer.write(CRLF)
-    await writer.drain()
+    response = HTTPResponse(200, close=True)
+    await response.send(writer)
     raise(KeyboardInterrupt)
 
 
