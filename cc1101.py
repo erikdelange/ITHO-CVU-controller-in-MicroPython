@@ -172,7 +172,11 @@ class CC1101:
     STATE_TXFIFO_UNDERFLOW = const(0x70)  # TX FIFO has underflowed
 
     def __init__(self, spi_id, ss, gd02):
-        """ Create a CC1101 object connected to a microcontoller SPI channel
+        """ Create a CC1101 object connected to a microcontroller SPI channel
+
+        This class assumes the usage of SPI hardware channels and the
+        corresponding (hardwired) pins. Software SPI is not supported.
+        Pin gd02 is only used when receiving messages, not when sending.
 
         :param int spi_id: microcontroller SPI channel id
         :param int ss: microcontroller pin number used for slave select (SS)
@@ -393,7 +397,8 @@ class CC1101:
 
 
 if __name__ == "__main__":
-    # Demo
+    # Demo the connection to a CC1101 by reading values from the chip
+
     cc1101 = CC1101(config.SPI_ID, config.SS_PIN, config.GD02_PIN)
 
     # Read status byte

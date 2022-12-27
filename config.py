@@ -13,16 +13,17 @@
 BOARD = "Wemos S2 Pico - ESP32S2"  # Reminder which board you have configured. Has no effect.
 SPI_ID_LIST = [1]  # List with all possible SPI hardware channel ID's for your board
 MISO_PIN_PER_SPI_ID = {"1": 36}  # Pin number of MISO for every SPI channel ID of your board
+BUTTON = 0  # User button on S2 Pico is connected to port 0
 
 SPI_ID = 1  # Hardware SPI channel ID to use for communication with your CC1101
 SS_PIN = 34  # Slave select pin connected to CC1101's CSn. Dependent on your hardware design
 GD02_PIN = 38  # Pin connected to CC101's GD02 pin. Dependent on your hardware design
 
 # The constants below can be set later, after discovering their values by
-# running itho.py
+# running itho.py via the repl
 
-ITHO_DEVICE_TYPE = 22  # Your Itho remote device type, 22 is an Itho RFT remote
-ITHO_DEVICE_ID = [116, 233, 94]  # Your Itho remote device id
+ITHO_REMOTE_TYPE = 22  # Your Itho remote device type, 22 is an Itho RFT remote
+ITHO_REMOTE_ID = (116, 233, 94)  # Your Itho remote device id
 
 # Command bytes for the various commands.
 # The default values come from an Itho RFT remote, production year 2021.

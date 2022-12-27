@@ -1,23 +1,28 @@
+import gc
 import json
 import logging
 import time
 
 import machine
-import s2pico
 import uasyncio as asyncio
+from machine import Pin
 
 import abutton
 import ntp
 from ahttpserver import HTTPResponse, HTTPServer, sendfile
+from ahttpserver.sse import EventSource
+from cc1101 import CC1101
+from config import GD02_PIN, ITHO_REMOTE_ID, ITHO_REMOTE_TYPE, SPI_ID, SS_PIN, BUTTON
 from itho import ITHOREMOTE
 from tasks import Tasks
 
-print(f"Starting {__name__}")
+
 logger = logging.getLogger(__name__)
 
 # Controller
 tasks = Tasks()
-remote = ITHOREMOTE()
+cc1101 = CC1101(SPI_ID, SS_PIN, GD02_PIN)
+remote = ITHOREMOTE(cc1101, ITHO_REMOTE_TYPE, ITHO_REMOTE_ID)
 
 # User interface
 app = HTTPServer()
@@ -25,40 +30,44 @@ app = HTTPServer()
 
 @app.route("GET", "/")
 async def root(reader, writer, request):
-    response = HTTPResponse(200, "text/html", close=True)
+    response = HTTPResponse(200, "text/html")
     await response.send(writer)
     await sendfile(writer, "index.html")
 
 
 @app.route("GET", "/favicon.ico")
 async def favicon(reader, writer, request):
-    response = HTTPResponse(200, "image/x-icon", close=True)
+    response = HTTPResponse(200, "image/x-icon")
     await response.send(writer)
     await sendfile(writer, "favicon.ico")
 
 
 @app.route("GET", "/api/init")
 async def api_init(reader, writer, request):
-    response = HTTPResponse(200, "application/json", close=True)
+    response = HTTPResponse(200, "application/json")
     await response.send(writer)
     settings = dict()
-    settings["start_low"] = "{:02d}:{:02d}".format(tasks.task["start_low"][0], tasks.task["start_low"][1])
-    settings["start_medium"] = "{:02d}:{:02d}".format(tasks.task["start_medium"][0], tasks.task["start_medium"][1])
+    settings["start_low"] = f"{tasks.task['start_low'][0]:02d}:{tasks.task['start_low'][1]:02d}"
+    settings["start_medium"] = f"{tasks.task['start_medium'][0]:02d}:{tasks.task['start_medium'][1]:02d}"
     writer.write(json.dumps(settings))
 
 
 @app.route("GET", "/api/datetime")
 async def api_datetime(reader, writer, request):
-    response = HTTPResponse(200, "application/json", close=True)
-    await response.send(writer)
-    t = time.localtime()
-    timestring = "{:02d}-{:02d}-{:04d} {:02d}:{:02d}:{:02d}".format(t[2], t[1], t[0], t[3], t[4], t[5])
-    writer.write(json.dumps({"datetime": timestring}))
+    """ Setup a server sent event connection to the client continuously updating the date and time """
+    eventsource = await EventSource(reader, writer)
+    while True:
+        await asyncio.sleep(1)
+        t = time.localtime()
+        try:
+            await eventsource.send(event="datetime", data=f"{t[2]:02d}-{t[1]:02d}-{t[0]:04d} {t[3]:02d}:{t[4]:02d}:{t[5]:02d}")
+        except Exception:
+            break  # close connection
 
 
 @app.route("GET", "/api/set")
 async def api_set(reader, writer, request):
-    response = HTTPResponse(200, "application/json", close=True)
+    response = HTTPResponse(200)
     await response.send(writer)
     parameters = request.parameters
     if "start_low" in parameters:
@@ -67,12 +76,12 @@ async def api_set(reader, writer, request):
     if "start_medium" in parameters:
         tasks.task["start_medium"][0] = int(parameters["start_medium"][:2])
         tasks.task["start_medium"][1] = int(parameters["start_medium"][3:])
-    writer.write(json.dumps(parameters))
     tasks.save()
 
+
 @app.route("GET", "/api/click")
-async def api_button_low(reader, writer, request):
-    response = HTTPResponse(200, "application/json", close=True)
+async def api_button(reader, writer, request):
+    response = HTTPResponse(200)
     await response.send(writer)
     parameters = request.parameters
     if "button" in parameters:
@@ -93,25 +102,28 @@ async def api_button_low(reader, writer, request):
             remote.join()
         elif value == "Leave":
             remote.leave()
-    writer.write(json.dumps(parameters))
 
 
 @app.route("GET", "/api/reset")
 async def api_reset(reader, writer, request):
-    response = HTTPResponse(200, close=True)
+    """ Hard reset, useful after remote software update via FTP """
+    response = HTTPResponse(200)
     await response.send(writer)
     machine.reset()
 
 
 @app.route("GET", "/api/stop")
 async def api_stop(reader, writer, request):
-    response = HTTPResponse(200, close=True)
+    """ Force asyncio scheduler to stop, just like ctrl-c on the repl """
+    response = HTTPResponse(200)
     await response.send(writer)
     raise(KeyboardInterrupt)
 
 
-async def scheduler():
-    """ Run scheduled tasks """
+# End of user interface code
+
+async def scheduler_task():
+    """ Run scheduled tasks at specific times """
 
     def eligible(scheduled_time):
         """ Check if scheduled time lies between now and the last time the scheduler ran """
@@ -139,6 +151,12 @@ async def scheduler():
         prev_mins = curr_mins
         await asyncio.sleep(60)  # wakeup every minute (at most)
 
+async def free_memory_task():
+    """ Free memory every 60 seconds """
+    while True:
+        gc.collect()
+        gc.threshold(gc.mem_free() // 4 + gc.mem_alloc())
+        await asyncio.sleep(60)
 
 try:
     def handle_exception(loop, context):
@@ -147,18 +165,19 @@ try:
         logger.exception(context["exception"], "global exception handler")
         sys.exit()
 
-    # the user button on the s2pico stops the asyncio scheduler
+    # the user button on the microcontroller stops the asyncio scheduler
     def _keyboardinterrupt():
         raise(KeyboardInterrupt)
 
-    pb = abutton.Pushbutton(s2pico.button, suppress=True)
+    pb = abutton.Pushbutton(Pin(BUTTON, Pin.IN, Pin.PULL_UP), suppress=True)
     pb.press_func(_keyboardinterrupt, ())
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(handle_exception)
 
     loop.create_task(ntp.sync())  # initial time synchronization
-    loop.create_task(scheduler())
+    loop.create_task(scheduler_task())
+    loop.create_task(free_memory_task())
     loop.create_task(app.start())
 
     loop.run_forever()

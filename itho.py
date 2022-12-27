@@ -11,15 +11,18 @@ from micropython import const
 
 import config
 from cc1101 import CC1101
+from config import GD02_PIN, SPI_ID, SS_PIN
 
 
 class CC1101MESSAGE:
+
     def __init__(self):
         self.length = 0
         self.data = bytearray(128)
 
 
 class ITHOCOMMAND:
+
     UNKNOWN = const(0)
     JOIN = const(1)
     LEAVE = const(2)
@@ -30,73 +33,39 @@ class ITHOCOMMAND:
     TIMER2 = const(7)
     TIMER3 = const(8)
 
-    # Command bytes as sent by RFT remote
-    JOIN_BYTES = config.ITHO_JOIN_BYTES
-    LEAVE_BYTES = config.ITHO_LEAVE_BYTES
-    LOW_BYTES = config.ITHO_LOW_BYTES
-    MEDIUM_BYTES = config.ITHO_MEDIUM_BYTES
-    HIGH_BYTES = config.ITHO_HIGH_BYTES
-    TIMER1_BYTES = config.ITHO_TIMER1_BYTES
-    TIMER2_BYTES = config.ITHO_TIMER2_BYTES
-    TIMER3_BYTES = config.ITHO_TIMER3_BYTES
+    default = {
+        JOIN: config.ITHO_JOIN_BYTES,
+        LEAVE: config.ITHO_LEAVE_BYTES,
+        LOW: config.ITHO_LOW_BYTES,
+        MEDIUM: config.ITHO_MEDIUM_BYTES,
+        HIGH: config.ITHO_HIGH_BYTES,
+        TIMER1: config.ITHO_TIMER1_BYTES,
+        TIMER2: config.ITHO_TIMER2_BYTES,
+        TIMER3: config.ITHO_TIMER3_BYTES
+    }
 
     @classmethod
     def commandbytes(cls, command):
         """ Return commandbytes for command """
-        if command == cls.JOIN:
-            return cls.JOIN_BYTES
-        elif command == cls.LEAVE:
-            return cls.LEAVE_BYTES
-        elif command == cls.LOW:
-            return cls.LOW_BYTES
-        elif command == cls.MEDIUM:
-            return cls.MEDIUM_BYTES
-        elif command == cls.HIGH:
-            return cls.HIGH_BYTES
-        elif command == cls.TIMER1:
-            return cls.TIMER1_BYTES
-        elif command == cls.TIMER2:
-            return cls.TIMER2_BYTES
-        elif command == cls.TIMER3:
-            return cls.TIMER3_BYTES
-        else:
-            return cls.LOW_BYTES
+        return cls.default.get(command, config.ITHO_LOW_BYTES)
 
     @classmethod
     def find_command(cls, commmandbytes):
         """" Return command for commandbytes """
-
-        def compare(list1, list2):
+        for key, value in cls.default.items():
             # A check on the last two bytes is sufficient
-            if list1[4] == list2[4] and list1[5] == list2[5]:
-                return True
-            return False
+            if commmandbytes[4] == value[4] and commmandbytes[5] == value[5]:
+                return key
 
-        if compare(commmandbytes, cls.JOIN_BYTES):
-            return cls.JOIN
-        elif compare(commmandbytes, cls.LEAVE_BYTES):
-            return cls.LEAVE
-        elif compare(commmandbytes, cls.LOW_BYTES):
-            return cls.LOW
-        elif compare(commmandbytes, cls.MEDIUM_BYTES):
-            return cls.MEDIUM
-        elif compare(commmandbytes, cls.HIGH_BYTES):
-            return cls.HIGH
-        elif compare(commmandbytes, cls.TIMER1_BYTES):
-            return cls.TIMER1
-        elif compare(commmandbytes, cls.TIMER2_BYTES):
-            return cls.TIMER2
-        elif compare(commmandbytes, cls.TIMER3_BYTES):
-            return cls.TIMER3
-        else:
-            return cls.UNKNOWN
+        return cls.UNKNOWN
 
 
 class ITHOPACKET:
+
     def __init__(self):
         self.command = ITHOCOMMAND.UNKNOWN  # used for incoming message only
-        self.device_type = 0  # used for incoming message only
-        self.device_id = bytearray(3)  # used for incoming message only
+        self.remote_type = 0  # used for incoming message only
+        self.remote_id = bytearray(3)  # used for incoming message only
         self.counter = 0  # used for incoming message only
 
         self.data_decoded = bytearray(32)
@@ -104,14 +73,14 @@ class ITHOPACKET:
         self.data_length = 0
 
     def print(self):
-        print("device type", self.device_type)
-        print("  device id", end=' ')
-        for i in range(len(self.device_id)):
-            print(self.device_id[i], end=' ')
+        print("remote type", self.remote_type)
+        print("  remote id", end=' ')
+        for i in range(len(self.remote_id)):
+            print(self.remote_id[i], end=' ')
         print()
         print("    command", self.command)
 
-        offset = 7 if self.device_type in [24, 28] else 5
+        offset = 7 if self.remote_type in [24, 28] else 5
         print("      bytes", end=' ')
         for i in range(offset, offset + 6):
             print(self.data_decoded[i], end=' ')
@@ -124,7 +93,7 @@ class ITHOPACKET:
         print()
 
     def message_encode(self, message):
-        """ Encode this ITHOPACKET (self) into message
+        """ Encode this ITHOPACKET (self) into a message
 
         :param CC1101PACKET message: space where to store the encoded message
         :return int: number of bytes encoded
@@ -246,17 +215,24 @@ class ITHOPACKET:
 
 
 class ITHO:
+
     SEND_TRIES = const(3)
 
-    def __init__(self, rf):
-        """ Create ITHO CVE controller
+    def __init__(self, rf, remote_type=None, remote_id=None):
+        """ Create ITHO CVU controller
+
+        Parameters remote_type and remote_id can be empty when only listening to
+        a remote to discover their values, but must be filled when sending
+        commands.
 
         :param CC1101 rf: CC1101 rf transceiver instance
+        :param int remote_type: remote type connected or to join with the CVU
+        :param tuple(int,int,int) remote_id: ID of the remote
         """
         self.rf = rf
+        self.remote_type = remote_type
+        self.remote_id = remote_id
 
-        self.device_type = config.ITHO_DEVICE_TYPE
-        self.device_id = config.ITHO_DEVICE_ID
         self.counter = 0  # 0-255 counter, incremented every remote button press / command sent
 
     def init_transfer(self, length):
@@ -467,14 +443,14 @@ class ITHO:
 
         itho_packet.message_decode(message)
 
-        itho_packet.device_type = itho_packet.data_decoded[0]
-        itho_packet.device_id[0] = itho_packet.data_decoded[1]
-        itho_packet.device_id[1] = itho_packet.data_decoded[2]
-        itho_packet.device_id[2] = itho_packet.data_decoded[3]
+        itho_packet.remote_type = itho_packet.data_decoded[0]
+        itho_packet.remote_id[0] = itho_packet.data_decoded[1]
+        itho_packet.remote_id[1] = itho_packet.data_decoded[2]
+        itho_packet.remote_id[2] = itho_packet.data_decoded[3]
         itho_packet.counter = itho_packet.data_decoded[4]
 
         commandbytes = list()
-        offset = 7 if itho_packet.device_type in [24, 28] else 5
+        offset = 7 if itho_packet.remote_type in [24, 28] else 5
         # collect the 6 command bytes from the packet
         for i in range(offset, offset + 6):
             # command byte must equal check byte for a correct command
@@ -491,7 +467,7 @@ class ITHO:
     def send_command(self, command):
         """ Send command to ITHO CVE
 
-        :param command int: command to send
+        :param int command: command to send
         """
         self.counter += 1
 
@@ -524,10 +500,10 @@ class ITHO:
 
         self.create_message_start(message)
 
-        itho_packet.data_decoded[0] = self.device_type
-        itho_packet.data_decoded[1] = self.device_id[0]
-        itho_packet.data_decoded[2] = self.device_id[1]
-        itho_packet.data_decoded[3] = self.device_id[2]
+        itho_packet.data_decoded[0] = self.remote_type
+        itho_packet.data_decoded[1] = self.remote_id[0]
+        itho_packet.data_decoded[2] = self.remote_id[1]
+        itho_packet.data_decoded[3] = self.remote_id[2]
         itho_packet.data_decoded[4] = self.counter
 
         command_bytes = ITHOCOMMAND.commandbytes(command)
@@ -562,27 +538,27 @@ class ITHO:
 
         self.create_message_start(message)
 
-        itho_packet.data_decoded[0] = self.device_type
-        itho_packet.data_decoded[1] = self.device_id[0]
-        itho_packet.data_decoded[2] = self.device_id[1]
-        itho_packet.data_decoded[3] = self.device_id[2]
+        itho_packet.data_decoded[0] = self.remote_type
+        itho_packet.data_decoded[1] = self.remote_id[0]
+        itho_packet.data_decoded[2] = self.remote_id[1]
+        itho_packet.data_decoded[3] = self.remote_id[2]
         itho_packet.data_decoded[4] = self.counter
 
         command_bytes = ITHOCOMMAND.commandbytes(ITHOCOMMAND.JOIN)
         for i in range(len(command_bytes)):
             itho_packet.data_decoded[i + 5] = command_bytes[i]
 
-        itho_packet.data_decoded[11] = self.device_id[0]
-        itho_packet.data_decoded[12] = self.device_id[1]
-        itho_packet.data_decoded[13] = self.device_id[2]
+        itho_packet.data_decoded[11] = self.remote_id[0]
+        itho_packet.data_decoded[12] = self.remote_id[1]
+        itho_packet.data_decoded[13] = self.remote_id[2]
 
         itho_packet.data_decoded[14] = 1
         itho_packet.data_decoded[15] = 16
         itho_packet.data_decoded[16] = 224
 
-        itho_packet.data_decoded[17] = self.device_id[0]
-        itho_packet.data_decoded[18] = self.device_id[1]
-        itho_packet.data_decoded[19] = self.device_id[2]
+        itho_packet.data_decoded[17] = self.remote_id[0]
+        itho_packet.data_decoded[18] = self.remote_id[1]
+        itho_packet.data_decoded[19] = self.remote_id[2]
 
         itho_packet.data_decoded[20] = self.checksum(itho_packet, 20)
 
@@ -611,19 +587,19 @@ class ITHO:
 
         self.create_message_start(message)
 
-        itho_packet.data_decoded[0] = self.device_type
-        itho_packet.data_decoded[1] = self.device_id[0]
-        itho_packet.data_decoded[2] = self.device_id[1]
-        itho_packet.data_decoded[3] = self.device_id[2]
+        itho_packet.data_decoded[0] = self.remote_type
+        itho_packet.data_decoded[1] = self.remote_id[0]
+        itho_packet.data_decoded[2] = self.remote_id[1]
+        itho_packet.data_decoded[3] = self.remote_id[2]
         itho_packet.data_decoded[4] = self.counter
 
         command_bytes = ITHOCOMMAND.commandbytes(ITHOCOMMAND.LEAVE)
         for i in range(len(command_bytes)):
             itho_packet.data_decoded[i + 5] = command_bytes[i]
 
-        itho_packet.data_decoded[11] = self.device_id[0]
-        itho_packet.data_decoded[12] = self.device_id[1]
-        itho_packet.data_decoded[13] = self.device_id[2]
+        itho_packet.data_decoded[11] = self.remote_id[0]
+        itho_packet.data_decoded[12] = self.remote_id[1]
+        itho_packet.data_decoded[13] = self.remote_id[2]
 
         itho_packet.data_decoded[14] = self.checksum(itho_packet, 14)
 
@@ -665,11 +641,19 @@ class ITHO:
 
 
 class ITHOREMOTE:
-    def __init__(self, device_type=config.ITHO_DEVICE_TYPE, device_id=config.ITHO_DEVICE_ID):
-        cc1101 = CC1101(config.SPI_ID, config.SS_PIN, config.GD02_PIN)
-        self.itho = ITHO(cc1101)
-        self.itho.device_type = device_type
-        self.itho.device_id = device_id
+
+    def __init__(self, rf, remote_type, remote_id):
+        """ Create an Itho remote
+
+        :param CC1101 rf: transmitter to use
+        :param int remote_type: Itho remote type
+        :param tuple(int,int,int) remote_id: unique ID of Itho remote
+        """
+        self.rf = rf
+        self.remote_type = remote_type
+        self.remote_id = remote_id
+
+        self.itho = ITHO(rf, remote_type, remote_id)
 
     def high(self):
         self.itho.send_command(ITHOCOMMAND.HIGH)
@@ -697,22 +681,21 @@ class ITHOREMOTE:
 
 
 if __name__ == "__main__":
-
-    cc1101 = CC1101(config.SPI_ID, config.SS_PIN, config.GD02_PIN)
-
-    itho = ITHO(cc1101)
-
     # Listen for commands
-    # Use this to discover the device type and id of your remote and
+    # Use this to discover the type and id of your remote and
     # the specific command bytes for the buttons on your remote.
     # Usage: Start this program and press the buttons on your remote.
 
-    # For send command demo adjust device_type and device_id to the
-    # values you've just discovered and uncomment the 3 lines below
+    cc1101 = CC1101(SPI_ID, SS_PIN, GD02_PIN)
+
+    itho = ITHO(cc1101)
+
+    # For a send command demo adjust remote_type and remote_id below to
+    # the values you've just discovered and uncomment the 3 lines below.
     #
-    # itho.device_type = 22  # Your RFT remote type (or adjust in config.py)
-    # itho.device_id = [11, 22, 33]  # Your RFT remote ID (or adjust in config.py)
-    # itho.send_command(ITHOCOMMAND.HIGH)  # should be audible
+    # itho.remote_type = 22  # Your RFT remote type (or adjust in config.py)
+    # itho.remote_id = [11, 22, 33]  # Your RFT remote ID (or adjust in config.py)
+    # itho.send_command(ITHOCOMMAND.HIGH)  # should be audible (else check/adjust ITHO_HIGH_BYTES in config.py)
 
     print("listening to remote commands")
 

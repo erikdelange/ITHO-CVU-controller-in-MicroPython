@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <title> ITHO CVE </title>
+    <title> ITHO CVU </title>
     <style>
       label { display: inline-block; width:170px; }
       input[type=time] { display: inline-block; width:100px; }
@@ -14,7 +14,7 @@
 
   <body>
     <div class="w3-container" style="width:fit-content; max-width:500px;">
-      <h2> ITHO CVE Control </h2>
+      <h2> ITHO CVU Control </h2>
       <div class="w3-panel w3-border">
         <h3 onclick="accordion('Control')" style="cursor: pointer;"> Control </h3>
         <div id="Control" class="w3-hide w3-show">
@@ -47,8 +47,8 @@
       <div class="w3-panel w3-border">
         <h3 onclick="accordion('Advanced')" style="cursor: pointer;"> Advanced </h3>
         <div id="Advanced" class="w3-hide">
-          <input type="button" class="w3-button w3-padding-small w3-border w3-light-gray" style="width:80px" id="join" name="join" value="Join" title="To join press button within 2 minutes after powering on the CVE" onclick="onButtonClick(event)">
-          <input type="button" class="w3-button w3-padding-small w3-border w3-light-gray" style="width:80px" id="leave" name="leave" value="Leave" title="To leave press button within 2 minutes after powering on the CVE" onclick="onButtonClick(event)">
+          <input type="button" class="w3-button w3-padding-small w3-border w3-light-gray" style="width:80px" name="button" value="Join" title="To join press button within 2 minutes after powering on the CVE" onclick="onButtonClick(event)">
+          <input type="button" class="w3-button w3-padding-small w3-border w3-light-gray" style="width:80px" name="button" value="Leave" title="To leave press button within 2 minutes after powering on the CVE" onclick="onButtonClick(event)">
           <input type="button" class="w3-button w3-padding-small w3-border w3-light-gray w3-right" style="width:80px" id="reset" name="reset" value="Reset" onclick="onReset(event)">
           <br><br>
         </div>
@@ -96,20 +96,6 @@
       }
       // End of helper functions
 
-      function datetimeRefresh() {
-        // Get datetime from server
-        fetch("/api/datetime")
-          .then(validateResponse)
-          .then(readResponseAsJSON)
-          .then(data => {
-            console.log("/api/datetime data:", data);
-            for (var key in data) {
-              document.getElementById(key).innerText = data[key];
-            }
-          })
-          .catch(logError);
-      }
-
       function onReset() {
         fetch("/api/reset")
           .then(validateResponse)
@@ -121,10 +107,6 @@
         var element = event.target;
         fetch("/api/set?".concat(element.name, "=", element.value))
           .then(validateResponse)
-          .then(readResponseAsJSON)
-          .then(data => {
-            console.log("/api/set data:", data);
-          })
           .catch(logError);
       }
 
@@ -133,15 +115,11 @@
         var element = event.target;
         fetch("/api/click?".concat(element.name, "=", element.value))
           .then(validateResponse)
-          .then(readResponseAsJSON)
-          .then(data => {
-            console.log("/api/click data:", data);
-          })    
           .catch(logError);
       }
 
       function onLoadEvent() {
-        // Load currrent clock program
+        // Load current clock program
         fetch("/api/init")
           .then(validateResponse)
           .then(readResponseAsJSON)
@@ -153,11 +131,17 @@
           })
           .catch(logError);
 
-        // Load current datetime
-        datetimeRefresh();
+        // Setup datetime event listener
+        const datetimeEventSource = new EventSource("/api/datetime");
 
-        // Refresh status every 60 seconds
-        setInterval(datetimeRefresh, 60000);
+        datetimeEventSource.addEventListener("datetime", (event) => {
+          document.getElementById("datetime").innerText = event.data;
+        });
+
+        datetimeEventSource.onerror = (event) => {
+          console.log(datetimeEventSource.url, "error");
+          datetimeEventSource.close();
+        };
       }
 
       window.onload = onLoadEvent();
